@@ -30,6 +30,7 @@ preferences {
     section("Log devices...") {
     	input "illuminants", "capability.illuminanceMeasurement", title: "Illuminants", required:false, multiple: true
         input "humidities", "capability.relativeHumidityMeasurement", title: "Relative Humidities", required:false, multiple: true
+        input "powers", "capability.powerMeter", title: "Power Meters", required:false, multiple: true
         input "temperatures", "capability.temperatureMeasurement", title: "Temperatures", required:false, multiple: true        
         input "contacts", "capability.contactSensor", title: "Contacts", required: false, multiple: true
         input "accelerations", "capability.accelerationSensor", title: "Accelerations", required: false, multiple: true
@@ -58,6 +59,7 @@ def updated() {
 def initialize() {
 	subscribe(illuminants, "illuminance", handleIlluminanceEvent)
 	subscribe(humidities, "humidity", handleHumidityEvent)
+    subscribe(powers, "power", handlePowerEvent)
     subscribe(temperatures, "temperature", handleTemperatureEvent)
     subscribe(contacts, "contact", handleContactEvent)
     subscribe(accelerations, "acceleration", handleAccelerationEvent)
@@ -73,6 +75,10 @@ def handleIlluminanceEvent(evt) {
 }
 
 def handleHumidityEvent(evt) {
+    logField(evt) { it.toString() }
+}
+
+def handlePowerEvent(evt) {
     logField(evt) { it.toString() }
 }
 
