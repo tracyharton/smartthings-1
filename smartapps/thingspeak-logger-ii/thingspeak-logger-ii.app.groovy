@@ -57,6 +57,11 @@ def updated() {
 }
 
 def initialize() {
+    state.valueMap = [:]
+    
+    updateChannelInfo()
+    log.debug state.fieldMap
+
 	subscribe(illuminants, "illuminance", handleIlluminanceEvent)
 	subscribe(humidities, "humidity", handleHumidityEvent)
     subscribe(powers, "power", handlePowerEvent)
@@ -65,9 +70,6 @@ def initialize() {
     subscribe(accelerations, "acceleration", handleAccelerationEvent)
     subscribe(motions, "motion", handleMotionEvent)
     subscribe(switches, "switch", handleSwitchEvent)
-
-    updateChannelInfo()
-    log.debug state.fieldMap
 }
 
 def handleIlluminanceEvent(evt) {
@@ -125,25 +127,46 @@ private updateChannelInfo() {
     state.fieldMap = getFieldMap(state.channelInfo)
 }
 
-private logField(evt, Closure c) {
+def logField(evt, Closure c) {
     def deviceName = evt.displayName.trim().toLowerCase() 
     log.debug state.fieldMap
     def fieldNum = state.fieldMap[deviceName]
     if (!fieldNum) {
-        log.debug "Device '${deviceName}' has no field"
+        log.debug "Device '${deviceName}' has no field, check channel settings"
         return
     }
 
     def value = c(evt.value)
-    log.debug "Logging to channel ${channelId}, ${fieldNum}, value ${value}"
+    log.debug "Saving event ${deviceName} - ${fieldNum}, value ${value}"
 
-    def url = "http://api.thingspeak.com/update?key=${channelKey}&${fieldNum}=${value}"
+    state.valueMap.put(fieldNum, value)
+    
+    log.debug state.valueMap
+    
+    runIn(15, sendUpdate)
+}
+
+def sendUpdate()
+{
+    def url = "http://api.thingspeak.com/update?key=${channelKey}"
+    
+    log.debug state.valueMap
+    
+    for (e in state.valueMap) 
+    {        
+        url = url + "&${e.key}=${e.value}"
+    }
+     
+    log.debug "Logging: ${url}"
+
     httpGet(url) { 
         response -> 
         if (response.status != 200 ) {
             log.debug "ThingSpeak logging failed, status = ${response.status}"
         } else {
-        	log.debug "ThingSpeak logging successful, status = ${response.status}"
+        	def eventId = response.data.toInteger()
+        	log.debug "ThingSpeak logging successful, status = ${response.status}, eventId = ${eventId}"
+            state.valueMap = [:]
         }
     }
 }
